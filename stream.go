@@ -45,7 +45,7 @@ func (s *Stream) run() {
 					s.display.newStream <- true
 				}
 				if s.tailPos < curSizes.height {
-					termbox.SetCell(s.display.column, s.tailPos, '\uFF60', termbox.ColorBlack, termbox.ColorBlack)
+					termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack) //'\uFF60'
 					s.tailPos++
 				} else {
 					goto done
