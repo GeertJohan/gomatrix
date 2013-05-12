@@ -49,6 +49,7 @@ func setSizes(width int, height int) {
 }
 
 func main() {
+	fmt.Println("Opening connection to The Matrix.. Please stand by..")
 	// setup logging with logfile ~/.gomatrix-log
 	logfile, err := os.OpenFile(os.Getenv("HOME")+"/.gomatrix-log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -184,5 +185,6 @@ func main() {
 	// close down
 	termbox.Close()
 	log.Println("stopping gomatrix")
-	fmt.Println("gomatrix closed")
+	fmt.Println("Thank you for connecting with Cypher's Matrix API v4.2. Have a nice day!")
+	os.Exit(0)
 }

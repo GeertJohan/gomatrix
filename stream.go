@@ -29,7 +29,7 @@ func (s *Stream) run() {
 		case <-time.After(time.Duration(s.speed) * time.Millisecond):
 			// add a new rune if there is space in the stream
 			if !s.headDone && s.headPos <= curSizes.height {
-				newRune := alphaNumerics[rand.Intn(len(alphaNumerics))]
+				newRune := halfWidthKana[rand.Intn(len(halfWidthKana))]
 				termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
 				termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
 				lastRune = newRune
@@ -45,7 +45,7 @@ func (s *Stream) run() {
 					s.display.newStream <- true
 				}
 				if s.tailPos < curSizes.height {
-					termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack)
+					termbox.SetCell(s.display.column, s.tailPos, '\uFF60', termbox.ColorBlack, termbox.ColorBlack)
 					s.tailPos++
 				} else {
 					goto done
