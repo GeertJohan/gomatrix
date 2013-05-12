@@ -81,19 +81,32 @@ func (sd *StreamDisplay) run() {
 
 			// log that SD has closed
 			log.Printf("StreamDisplay on column %d stopped.\n", sd.column)
+
+			// close this goroutine
+			return
+
 		case <-sd.newStream:
 			// have some wait before the first stream starts..
 			<-time.After(time.Duration(rand.Intn(9000)) * time.Millisecond)
+
+			// lock map
 			sd.streamsLock.Lock()
+
+			// crekate new stream instance
 			s := &Stream{
 				display: sd,
 				stopCh:  make(chan bool),
 				speed:   30 + rand.Intn(110),
 				length:  6 + rand.Intn(6), // length of a stream is between 6 and 12 runes
 			}
+
+			// store in streams map
 			sd.streams[s] = true
+
+			// run the stream in a goroutine
 			go s.run()
-			log.Printf("Now have %d streams in SD %d\n", len(sd.streams), sd.column)
+
+			// unlock map
 			sd.streamsLock.Unlock()
 		}
 	}

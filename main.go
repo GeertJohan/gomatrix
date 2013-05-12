@@ -62,15 +62,21 @@ func main() {
 	// parse flags
 	args, err := flags.Parse(&opts)
 	if err != nil {
-		if err.Error()[0:5] == "Usage" {
-			fmt.Println(err)
+		flagError := err.(*flags.Error)
+		if flagError.Type == flags.ErrHelp {
 			return
 		}
-		fmt.Printf("Error parsing flags: %s\nUse --help to view all available options.\n", err)
+		if flagError.Type == flags.ErrUnknownFlag {
+			fmt.Println("Use --help to view all available options.")
+			return
+		}
+		fmt.Printf("Error parsing flags: %s\n", err)
 		return
 	}
+
+	// we don't accept too much arguments..
 	if len(args) > 0 {
-		fmt.Printf("Unknown argument '%s'\n", args[0])
+		fmt.Printf("Unknown argument '%s'.\n", args[0])
 		return
 	}
 
@@ -219,6 +225,6 @@ func main() {
 	// close down
 	termbox.Close()
 	log.Println("stopping gomatrix")
-	fmt.Println("Thank you for connecting with Cypher's Matrix API v4.2. Have a nice day!")
+	fmt.Println("Thank you for connecting with Morpheus' Matrix API v4.2. Have a nice day!")
 	os.Exit(0)
 }
