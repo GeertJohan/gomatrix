@@ -10,29 +10,51 @@ import (
 
 // Stream updates a StreamDisplay with new data updates
 type Stream struct {
-	display *StreamDisplay
-	headPos int
-	tailPos int
-	stopCh  chan bool
+	display  *StreamDisplay
+	speed    int
+	length   int
+	headPos  int
+	tailPos  int
+	stopCh   chan bool
+	headDone bool
 }
 
 func (s *Stream) run() {
+	var lastRune rune
 	for {
 		select {
 		case <-s.stopCh:
-			log.Println("Stream on SD-%d stopped.\n", s.display.column)
-			return
-		case <-time.After(300 * time.Millisecond):
-			newRune := alphaNumerics[rand.Intn(len(alphaNumerics))]
-			termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorGreen, termbox.ColorBlack)
-			// stream length is random between 6 and 12 characters, although the shorter ones will display more often
-			if s.tailPos > 0 || (s.tailPos == 0 && s.headPos > 6+rand.Intn(6)) {
-				termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack)
-				s.tailPos++
+			log.Printf("Stream on SD %d was stopped.\n", s.display.column)
+			goto done
+		case <-time.After(time.Duration(s.speed) * time.Millisecond):
+			// add a new rune if there is space in the stream
+			if !s.headDone && s.headPos <= curSizes.height {
+				newRune := alphaNumerics[rand.Intn(len(alphaNumerics))]
+				termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
+				termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+				lastRune = newRune
+				s.headPos++
+			} else {
+				s.headDone = true
 			}
-			s.headPos++
+
+			// clear rune at the tail of the stream
+			if s.tailPos > 0 || s.headPos >= s.length {
+				if s.tailPos == 0 {
+					// tail is being incremented for the first time. there is space for a new stream
+					s.display.newStream <- true
+				}
+				if s.tailPos < curSizes.height {
+					termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack)
+					s.tailPos++
+				} else {
+					goto done
+				}
+			}
 		}
 	}
+done:
+	delete(s.display.streams, s)
 }
 
 // StreamDisplay represents a horizontal line in the terminal on which `Stream`s are displayed.
@@ -42,6 +64,7 @@ type StreamDisplay struct {
 	stopCh      chan bool
 	streams     map[*Stream]bool
 	streamsLock sync.Mutex
+	newStream   chan bool
 }
 
 func (sd *StreamDisplay) run() {
@@ -51,77 +74,27 @@ func (sd *StreamDisplay) run() {
 			// lock this SD forever
 			sd.streamsLock.Lock()
 
-			// stop streams
+			// stop streams for this SD
 			for s, _ := range sd.streams {
 				s.stopCh <- true
 			}
 
-			// log
+			// log that SD has closed
 			log.Printf("StreamDisplay on column %d stopped.\n", sd.column)
-		case <-time.After(time.Duration(rand.Intn(3)) * time.Second):
+		case <-sd.newStream:
+			// have some wait before the first stream starts..
+			<-time.After(time.Duration(rand.Intn(9000)) * time.Millisecond)
 			sd.streamsLock.Lock()
 			s := &Stream{
 				display: sd,
 				stopCh:  make(chan bool),
+				speed:   30 + rand.Intn(110),
+				length:  6 + rand.Intn(6), // length of a stream is between 6 and 12 runes
 			}
 			sd.streams[s] = true
 			go s.run()
+			log.Printf("Now have %d streams in SD %d\n", len(sd.streams), sd.column)
 			sd.streamsLock.Unlock()
 		}
 	}
-}
-
-func RunStreamDisplayManager() chan int {
-	streamDisplaysByColumn := make(map[int]*StreamDisplay)
-
-	curColumnSize := 0
-	newColumnSizeCh := make(chan int)
-
-	// start actual manager in goroutine
-	go func() {
-		for {
-			newColumnSize := <-newColumnSizeCh
-			diff := newColumnSize - curColumnSize
-
-			if diff == 0 {
-				// same column size, wait for new information
-				log.Println("Got resize over channel, but diff = 0")
-				continue
-			}
-
-			if diff > 0 {
-				log.Printf("Starting %d new SD's\n", diff)
-				for newColumn := curColumnSize; newColumn < newColumnSize; newColumn++ {
-					// create stream display
-					sd := &StreamDisplay{
-						column:  newColumn,
-						stopCh:  make(chan bool),
-						streams: make(map[*Stream]bool),
-					}
-					streamDisplaysByColumn[newColumn] = sd
-
-					// start StreamDisplay in goroutine
-					go sd.run()
-				}
-				curColumnSize = newColumnSize
-			}
-
-			if diff < 0 {
-				log.Printf("Closing %d SD's\n", diff)
-				for closeColumn := curColumnSize - 1; closeColumn > newColumnSize; closeColumn-- {
-					// get sd
-					sd := streamDisplaysByColumn[closeColumn]
-
-					// delete from map
-					delete(streamDisplaysByColumn, sd.column)
-
-					// inform sd that it's being closed
-					sd.stopCh <- true
-				}
-				curColumnSize = newColumnSize
-			}
-		}
-	}()
-
-	return newColumnSizeCh
 }

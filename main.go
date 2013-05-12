@@ -5,6 +5,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/nsf/termbox-go"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,6 +27,27 @@ var alphaNumerics = []rune{
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
+var streamDisplaysByColumn = make(map[int]*StreamDisplay)
+
+type sizes struct {
+	width  int
+	height int
+}
+
+var curSizes sizes
+var curStreamsPerStreamDisplay = 0
+var sizesUpdateCh = make(chan sizes)
+
+func setSizes(width int, height int) {
+	s := sizes{
+		width:  width,
+		height: height,
+	}
+	curSizes = s
+	curStreamsPerStreamDisplay = 1 + height/10
+	sizesUpdateCh <- s
+}
+
 func main() {
 	// setup logging with logfile ~/.gomatrix-log
 	logfile, err := os.OpenFile(os.Getenv("HOME")+"/.gomatrix-log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -38,6 +60,9 @@ func main() {
 	log.Println("-------------")
 	log.Println("Starting gomatrix. This logfile is for development/debug purposes.")
 
+	// seed the rand package with time
+	rand.Seed(time.Now().UnixNano())
+
 	// initialize termbox
 	err = termbox.Init()
 	if err != nil {
@@ -48,15 +73,65 @@ func main() {
 	defer termbox.Close()
 	termbox.HideCursor()
 
-	// start stream display manager
-	newColumnSizeCh := RunStreamDisplayManager()
-	columnSize, _ := termbox.Size()
-	newColumnSizeCh <- columnSize
+	// StreamDisplay manager
+	go func() {
+		var lastWidth int
+
+		for newSizes := range sizesUpdateCh {
+			log.Printf("New width: %d\n", newSizes.width)
+			diffWidth := newSizes.width - lastWidth
+
+			if diffWidth == 0 {
+				// same column size, wait for new information
+				log.Println("Got resize over channel, but diffWidth = 0")
+				continue
+			}
+
+			if diffWidth > 0 {
+				log.Printf("Starting %d new SD's\n", diffWidth)
+				for newColumn := lastWidth; newColumn < newSizes.width; newColumn++ {
+					// create stream display
+					sd := &StreamDisplay{
+						column:    newColumn,
+						stopCh:    make(chan bool, 1),
+						streams:   make(map[*Stream]bool),
+						newStream: make(chan bool, 1), // will only be filled at start and when a spawning stream has it's tail released
+					}
+					streamDisplaysByColumn[newColumn] = sd
+
+					// start StreamDisplay in goroutine
+					go sd.run()
+
+					// create first new stream
+					sd.newStream <- true
+				}
+				lastWidth = newSizes.width
+			}
+
+			if diffWidth < 0 {
+				log.Printf("Closing %d SD's\n", diffWidth)
+				for closeColumn := lastWidth - 1; closeColumn > newSizes.width; closeColumn-- {
+					// get sd
+					sd := streamDisplaysByColumn[closeColumn]
+
+					// delete from map
+					delete(streamDisplaysByColumn, closeColumn)
+
+					// inform sd that it's being closed
+					sd.stopCh <- true
+				}
+				lastWidth = newSizes.width
+			}
+		}
+	}()
+
+	// set initial sizes
+	setSizes(termbox.Size())
 
 	// flusher flushes every 100 miliseconds)
 	go func() {
 		for {
-			<-time.After(100 * time.Millisecond)
+			<-time.After(40 * time.Millisecond)
 			termbox.Flush()
 		}
 	}()
@@ -93,8 +168,8 @@ func main() {
 					}
 
 				case termbox.EventResize:
-					// give size to SD manager over channel
-					newColumnSizeCh <- event.Width
+					// set sizes
+					setSizes(event.Width, event.Height)
 
 				case termbox.EventError:
 					log.Fatalf("Quitting because of termbox error: \n%s\n", event.Err)
