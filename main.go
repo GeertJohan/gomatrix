@@ -15,10 +15,10 @@ import (
 
 var opts struct {
 	// display ascii instead of kana's
-	Ascii bool `short:"a" long:"ascii" description:"Use ascii/alphanumeric characters (instead of japanese kana's)"`
+	Ascii bool `short:"a" long:"ascii" description:"Use ascii/alphanumeric characters instead of japanese kana's."`
 
 	// enable logging
-	Logging bool `short:"l" long:"log" description:"Log debug messages to ~/.gomatrix-log"`
+	Logging bool `short:"l" long:"log" description:"Enable logging debug messages to ~/.gomatrix-log."`
 }
 
 // array with half width kanas as Go runes
@@ -66,7 +66,7 @@ func main() {
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("Error parsing flags: %s\n", err)
+		fmt.Printf("Error parsing flags: %s\nUse --help to view all available options.\n", err)
 		return
 	}
 	if len(args) > 0 {
@@ -106,7 +106,6 @@ func main() {
 		log.Printf("Cannot start gomatrix, termbox.Init() gave an error:\n%s\n", err)
 		os.Exit(1)
 	}
-	defer termbox.Close()
 	termbox.HideCursor()
 
 	// StreamDisplay manager
