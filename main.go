@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/jessevdk/go-flags"
 	"github.com/nsf/termbox-go"
 	"log"
 	"math/rand"
@@ -11,6 +12,14 @@ import (
 	"syscall"
 	"time"
 )
+
+var opts struct {
+	// display ascii instead of kana's
+	Ascii bool `short:"a" long:"ascii" description:"Use ascii/alphanumeric characters (instead of japanese kana's)"`
+
+	// enable logging
+	Logging bool `short:"l" long:"log" description:"Log debug messages to ~/.gomatrix-log"`
+}
 
 // array with half width kanas as Go runes
 // source: http://en.wikipedia.org/wiki/Half-width_kana
@@ -27,6 +36,7 @@ var alphaNumerics = []rune{
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
+var characters []rune
 var streamDisplaysByColumn = make(map[int]*StreamDisplay)
 
 type sizes struct {
@@ -49,9 +59,29 @@ func setSizes(width int, height int) {
 }
 
 func main() {
+	// parse flags
+	args, err := flags.Parse(&opts)
+	if err != nil {
+		if err.Error()[0:5] == "Usage" {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("Error parsing flags: %s\n", err)
+		return
+	}
+	if len(args) > 0 {
+		fmt.Printf("Unknown argument '%s'\n", args[0])
+		return
+	}
+
 	fmt.Println("Opening connection to The Matrix.. Please stand by..")
+
 	// setup logging with logfile ~/.gomatrix-log
-	logfile, err := os.OpenFile(os.Getenv("HOME")+"/.gomatrix-log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	filename := "/dev/null"
+	if opts.Logging {
+		filename = os.Getenv("HOME") + "/.gomatrix-log"
+	}
+	logfile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Printf("Could not open logfile. %s\n", err)
 		os.Exit(1)
@@ -60,6 +90,11 @@ func main() {
 	log.SetOutput(logfile)
 	log.Println("-------------")
 	log.Println("Starting gomatrix. This logfile is for development/debug purposes.")
+
+	characters = halfWidthKana
+	if opts.Ascii {
+		characters = alphaNumerics
+	}
 
 	// seed the rand package with time
 	rand.Seed(time.Now().UnixNano())
