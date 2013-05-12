@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// command line flags variable
 var opts struct {
 	// display ascii instead of kana's
 	Ascii bool `short:"a" long:"ascii" description:"Use ascii/alphanumeric characters instead of japanese kana's."`
@@ -30,24 +31,30 @@ var halfWidthKana = []rune{
 	'ﾐ', 'ﾑ', 'ﾒ', 'ﾓ', 'ﾔ', 'ﾕ', 'ﾖ', 'ﾗ', 'ﾘ', 'ﾙ', 'ﾚ', 'ﾛ', 'ﾜ', 'ﾝ', 'ﾞ', 'ﾟ',
 }
 
+// just basic alphanumeric characters
 var alphaNumerics = []rune{
 	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
 	'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
+// characters to be used, is being set to alphaNumerics or halfWidthKana depending on flags
 var characters []rune
+
+// streamDisplays by column number
 var streamDisplaysByColumn = make(map[int]*StreamDisplay)
 
+// struct sizes contains terminal sizes (in amount of characters)
 type sizes struct {
 	width  int
 	height int
 }
 
-var curSizes sizes
-var curStreamsPerStreamDisplay = 0
-var sizesUpdateCh = make(chan sizes)
+var curSizes sizes                   // current sizes
+var curStreamsPerStreamDisplay = 0   // curent amount of streams per display allowed
+var sizesUpdateCh = make(chan sizes) //channel used to notify StreamDisplayManager
 
+// set the sizes and notify StreamDisplayManager
 func setSizes(width int, height int) {
 	s := sizes{
 		width:  width,
@@ -73,16 +80,16 @@ func main() {
 		fmt.Printf("Error parsing flags: %s\n", err)
 		return
 	}
-
-	// we don't accept too much arguments..
 	if len(args) > 0 {
+		// we don't accept too much arguments..
 		fmt.Printf("Unknown argument '%s'.\n", args[0])
 		return
 	}
 
+	// Juse a println for fun..
 	fmt.Println("Opening connection to The Matrix.. Please stand by..")
 
-	// setup logging with logfile ~/.gomatrix-log
+	// setup logging with logfile /dev/null or ~/.gomatrix-log
 	filename := "/dev/null"
 	if opts.Logging {
 		filename = os.Getenv("HOME") + "/.gomatrix-log"
@@ -169,10 +176,10 @@ func main() {
 	// set initial sizes
 	setSizes(termbox.Size())
 
-	// flusher flushes every 100 miliseconds)
+	// flusher flushes the termbox every x miliseconds
 	go func() {
 		for {
-			<-time.After(40 * time.Millisecond)
+			<-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
 			termbox.Flush()
 		}
 	}()
@@ -194,7 +201,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGTERM)
 
 	// handle termbox events and unix signals
-	func() {
+	func() { //++ TODO: dont use function literal. use labels instead.
 		for {
 			// select for either event or signal
 			select {
@@ -202,17 +209,17 @@ func main() {
 				log.Printf("Have event: \n%s", spew.Sdump(event))
 				// switch on event type
 				switch event.Type {
-				case termbox.EventKey:
+				case termbox.EventKey: // actions depend on key
 					switch event.Key {
-					case termbox.KeyCtrlZ, termbox.KeyCtrlC:
+					case termbox.KeyCtrlZ, termbox.KeyCtrlC, 'q': //++ TODO: make the 'q' key work.
 						return
+						//++ TODO: add more fun keys (slowmo? freeze? rampage?)
 					}
 
-				case termbox.EventResize:
-					// set sizes
+				case termbox.EventResize: // set sizes
 					setSizes(event.Width, event.Height)
 
-				case termbox.EventError:
+				case termbox.EventError: // quit
 					log.Fatalf("Quitting because of termbox error: \n%s\n", event.Err)
 				}
 			case signal := <-sigChan:
