@@ -215,8 +215,19 @@ func main() {
 						return
 						//++ TODO: add more fun keys (slowmo? freeze? rampage?)
 					}
-					if event.Ch == 'q' {
+
+					switch event.Ch {
+					case 'q':
 						return
+
+					case 'c':
+						termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
+
+					case 'a':
+						characters = alphaNumerics
+
+					case 'k', 'j':
+						characters = halfWidthKana
 					}
 
 				case termbox.EventResize: // set sizes
