@@ -211,9 +211,12 @@ func main() {
 				switch event.Type {
 				case termbox.EventKey: // actions depend on key
 					switch event.Key {
-					case termbox.KeyCtrlZ, termbox.KeyCtrlC, 'q': //++ TODO: make the 'q' key work.
+					case termbox.KeyCtrlZ, termbox.KeyCtrlC:
 						return
 						//++ TODO: add more fun keys (slowmo? freeze? rampage?)
+					}
+					if event.Ch == 'q' {
+						return
 					}
 
 				case termbox.EventResize: // set sizes
