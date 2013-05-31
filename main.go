@@ -226,7 +226,7 @@ func main() {
 					case 'a':
 						characters = alphaNumerics
 
-					case 'k', 'j':
+					case 'k':
 						characters = halfWidthKana
 					}
 
