@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 )
 
@@ -90,7 +89,7 @@ func main() {
 	fmt.Println("Opening connection to The Matrix.. Please stand by..")
 
 	// setup logging with logfile /dev/null or ~/.gomatrix-log
-	filename := "/dev/null"
+	filename := os.DevNull
 	if opts.Logging {
 		filename = os.Getenv("HOME") + "/.gomatrix-log"
 	}
@@ -195,10 +194,8 @@ func main() {
 
 	// register signals to channel
 	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, syscall.SIGTSTP)
-	signal.Notify(sigChan, syscall.SIGKILL)
-	signal.Notify(sigChan, syscall.SIGQUIT)
-	signal.Notify(sigChan, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Kill)
 
 	// handle termbox events and unix signals
 	func() { //++ TODO: dont use function literal. use labels instead.
