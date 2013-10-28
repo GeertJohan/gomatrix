@@ -119,6 +119,7 @@ func main() {
 		os.Exit(1)
 	}
 	termbox.HideCursor()
+	termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
 
 	// StreamDisplay manager
 	go func() {
