@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"time"
 )
 
@@ -19,6 +20,9 @@ var opts struct {
 
 	// enable logging
 	Logging bool `short:"l" long:"log" description:"Enable logging debug messages to ~/.gomatrix-log."`
+
+	// enable profiling
+	Profile string `short:"p" long:"profile" description:"Write profile to given file path"`
 }
 
 // array with half width kanas as Go runes
@@ -83,6 +87,17 @@ func main() {
 		// we don't accept too much arguments..
 		fmt.Printf("Unknown argument '%s'.\n", args[0])
 		return
+	}
+
+	// Start profiling (if required)
+	if len(opts.Profile) > 0 {
+		f, err := os.Create(opts.Profile)
+		if err != nil {
+			fmt.Printf("Error opening profiling file: %s\n", err)
+			os.Exit(1)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
 
 	// Juse a println for fun..
@@ -245,5 +260,4 @@ func main() {
 	termbox.Close()
 	log.Println("stopping gomatrix")
 	fmt.Println("Thank you for connecting with Morpheus' Matrix API v4.2. Have a nice day!")
-	os.Exit(0)
 }
