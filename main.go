@@ -97,7 +97,6 @@ func main() {
 			os.Exit(1)
 		}
 		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
 	}
 
 	// Juse a println for fun..
@@ -194,7 +193,8 @@ func main() {
 	// flusher flushes the termbox every x miliseconds
 	go func() {
 		for {
-			<-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
+			// <-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
+			time.Sleep(40 * time.Millisecond)
 			termbox.Flush()
 		}
 	}()
@@ -260,4 +260,9 @@ func main() {
 	termbox.Close()
 	log.Println("stopping gomatrix")
 	fmt.Println("Thank you for connecting with Morpheus' Matrix API v4.2. Have a nice day!")
+
+	// stop profiling (if required)
+	if len(opts.Profile) > 0 {
+		pprof.StopCPUProfile()
+	}
 }

@@ -87,7 +87,8 @@ func (sd *StreamDisplay) run() {
 
 		case <-sd.newStream:
 			// have some wait before the first stream starts..
-			<-time.After(time.Duration(rand.Intn(9000)) * time.Millisecond)
+			// <-time.After(time.Duration(rand.Intn(9000)) * time.Millisecond) //++ TODO: .After or .Sleep??
+			time.Sleep(time.Duration(rand.Intn(9000)) * time.Millisecond)
 
 			// lock map
 			sd.streamsLock.Lock()
