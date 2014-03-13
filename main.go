@@ -23,6 +23,9 @@ var opts struct {
 
 	// enable profiling
 	Profile string `short:"p" long:"profile" description:"Write profile to given file path"`
+
+	// FPS
+	FPS int `long:"fps" description:"required FPS, must be somewhere between 1 and 50" default:"25"`
 }
 
 // array with half width kanas as Go runes
@@ -87,6 +90,10 @@ func main() {
 		// we don't accept too much arguments..
 		fmt.Printf("Unknown argument '%s'.\n", args[0])
 		return
+	}
+	if opts.FPS < 1 || opts.FPS > 60 {
+		fmt.Println("Error: option --fps not within range 1-60")
+		os.Exit(1)
 	}
 
 	// Start profiling (if required)
@@ -191,10 +198,12 @@ func main() {
 	setSizes(termbox.Size())
 
 	// flusher flushes the termbox every x miliseconds
+	fpsSleepTime := time.Duration(1000000/opts.FPS) * time.Microsecond
+	fmt.Println("fps sleep time: %s\n", fpsSleepTime.String())
 	go func() {
 		for {
 			// <-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
-			time.Sleep(40 * time.Millisecond)
+			time.Sleep(fpsSleepTime)
 			termbox.Flush()
 		}
 	}()
