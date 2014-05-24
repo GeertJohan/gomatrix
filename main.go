@@ -25,7 +25,7 @@ var opts struct {
 	Profile string `short:"p" long:"profile" description:"Write profile to given file path"`
 
 	// FPS
-	FPS int `long:"fps" description:"required FPS, must be somewhere between 1 and 50" default:"25"`
+	FPS int `long:"fps" description:"required FPS, must be somewhere between 1 and 60" default:"25"`
 }
 
 // array with half width kanas as Go runes
