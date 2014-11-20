@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/nsf/termbox-go"
 	"log"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/nsf/termbox-go"
 )
 
 // Stream updates a StreamDisplay with new data updates

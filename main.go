@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/jessevdk/go-flags"
-	"github.com/nsf/termbox-go"
 	"log"
 	"math/rand"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/jessevdk/go-flags"
+	"github.com/nsf/termbox-go"
 )
 
 // command line flags variable
