@@ -200,7 +200,7 @@ func main() {
 
 	// flusher flushes the termbox every x miliseconds
 	fpsSleepTime := time.Duration(1000000/opts.FPS) * time.Microsecond
-	fmt.Println("fps sleep time: %s\n", fpsSleepTime.String())
+	fmt.Printf("fps sleep time: %s\n", fpsSleepTime.String())
 	go func() {
 		for {
 			// <-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
