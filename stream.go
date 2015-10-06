@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nsf/termbox-go"
+	"github.com/gdamore/tcell/termbox"
 )
 
 // Stream updates a StreamDisplay with new data updates
