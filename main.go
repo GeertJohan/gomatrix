@@ -11,8 +11,10 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/jessevdk/go-flags"
-	"github.com/gdamore/tcell/termbox"
+	"github.com/gdamore/tcell"
 )
+
+var screen tcell.Screen
 
 // command line flags variable
 var opts struct {
@@ -133,15 +135,24 @@ func main() {
 	// seed the rand package with time
 	rand.Seed(time.Now().UnixNano())
 
-	// initialize termbox
-	err = termbox.Init()
-	if err != nil {
-		fmt.Println("Could not start termbox for gomatrix. View ~/.gomatrix-log for error messages.")
-		log.Printf("Cannot start gomatrix, termbox.Init() gave an error:\n%s\n", err)
+	// initialize tcell
+	if screen, err = tcell.NewScreen(); err != nil {
+		fmt.Println("Could not start tcell for gomatrix. View ~/.gomatrix-log for error messages.")
+		log.Printf("Cannot alloc screen, tcell.NewScreen() gave an error:\n%s", err)
 		os.Exit(1)
 	}
-	termbox.HideCursor()
-	termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
+
+	err = screen.Init()
+	if err != nil {
+		fmt.Println("Could not start tcell for gomatrix. View ~/.gomatrix-log for error messages.")
+		log.Printf("Cannot start gomatrix, screen.Init() gave an error:\n%s", err)
+		os.Exit(1)
+	}
+	screen.HideCursor()
+	screen.SetStyle(tcell.StyleDefault.
+		Background(tcell.ColorBlack).
+		Foreground(tcell.ColorBlack))
+	screen.Clear()
 
 	// StreamDisplay manager
 	go func() {
@@ -196,24 +207,23 @@ func main() {
 	}()
 
 	// set initial sizes
-	setSizes(termbox.Size())
+	setSizes(screen.Size())
 
-	// flusher flushes the termbox every x miliseconds
+	// flusher flushes the tcell every x miliseconds
 	fpsSleepTime := time.Duration(1000000/opts.FPS) * time.Microsecond
-	fmt.Printf("fps sleep time: %s\n", fpsSleepTime.String())
 	go func() {
 		for {
 			// <-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
 			time.Sleep(fpsSleepTime)
-			termbox.Flush()
+			screen.Show()
 		}
 	}()
 
 	// make chan for tembox events and run poller to send events on chan
-	eventChan := make(chan termbox.Event)
+	eventChan := make(chan tcell.Event)
 	go func() {
 		for {
-			event := termbox.PollEvent()
+			event := screen.PollEvent()
 			eventChan <- event
 		}
 	}()
@@ -223,28 +233,34 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt)
 	signal.Notify(sigChan, os.Kill)
 
-	// handle termbox events and unix signals
-	func() { //++ TODO: dont use function literal. use labels instead.
-		for {
-			// select for either event or signal
-			select {
-			case event := <-eventChan:
-				log.Printf("Have event: \n%s", spew.Sdump(event))
-				// switch on event type
-				switch event.Type {
-				case termbox.EventKey: // actions depend on key
-					switch event.Key {
-					case termbox.KeyCtrlZ, termbox.KeyCtrlC:
-						return
-						//++ TODO: add more fun keys (slowmo? freeze? rampage?)
-					}
+	// handle tcell events and unix signals
 
-					switch event.Ch {
+	done := false
+	for !done {
+		// select for either event or signal
+		select {
+		case event := <-eventChan:
+			log.Printf("Have event: \n%s", spew.Sdump(event))
+			// switch on event type
+			switch ev := event.(type) {
+			case *tcell.EventKey:
+				switch ev.Key() {
+				case tcell.KeyCtrlZ, tcell.KeyCtrlC:
+					done = true
+					continue
+
+					//++ TODO: add more fun keys (slowmo? freeze? rampage?)
+				case tcell.KeyCtrlL:
+					screen.Sync()
+
+				case tcell.KeyRune:
+					switch ev.Rune() {
 					case 'q':
-						return
+						done = true
+						continue
 
 					case 'c':
-						termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
+						screen.Clear()
 
 					case 'a':
 						characters = alphaNumerics
@@ -252,22 +268,28 @@ func main() {
 					case 'k':
 						characters = halfWidthKana
 					}
-
-				case termbox.EventResize: // set sizes
-					setSizes(event.Width, event.Height)
-
-				case termbox.EventError: // quit
-					log.Fatalf("Quitting because of termbox error: \n%s\n", event.Err)
 				}
-			case signal := <-sigChan:
-				log.Printf("Have signal: \n%s", spew.Sdump(signal))
-				return
+
+			case *tcell.EventResize: // set sizes
+				w, h := ev.Size()
+				setSizes(w, h)
+
+			case *tcell.EventError: // quit
+				log.Fatalf("Quitting because of tcell error: %v", ev.Error())
+				done = true
+				continue
 			}
+
+		case signal := <-sigChan:
+			log.Printf("Have signal: \n%s", spew.Sdump(signal))
+			done = true
+			continue
 		}
-	}()
+	}
 
 	// close down
-	termbox.Close()
+	screen.Fini()
+
 	log.Println("stopping gomatrix")
 	fmt.Println("Thank you for connecting with Morpheus' Matrix API v4.2. Have a nice day!")
 

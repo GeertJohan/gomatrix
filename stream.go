@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gdamore/tcell/termbox"
+	"github.com/gdamore/tcell"
 )
 
 // Stream updates a StreamDisplay with new data updates
@@ -20,8 +20,28 @@ type Stream struct {
 	headDone bool
 }
 
+
 func (s *Stream) run() {
+	blackStyle := tcell.StyleDefault.
+		Foreground(tcell.ColorBlack).
+		Background(tcell.ColorBlack)
+
+	headStyle := blackStyle.Foreground(tcell.ColorWhite)
+	tailStyle := blackStyle.Foreground(tcell.ColorGreen)
+	midStyle := blackStyle.Foreground(tcell.ColorGreen)
+
+	if screen.Colors() >= 16 {
+		midStyle = headStyle.Foreground(tcell.ColorBrightGreen)
+		// 33% of streams (arbitrary) get a bright white head
+		if rand.Intn(100) < 33 {
+			headStyle = headStyle.Foreground(tcell.ColorBrightWhite)
+		} else {
+			headStyle = midStyle
+		}
+	}
+
 	var lastRune rune
+	var llastRune rune
 	for {
 		select {
 		case <-s.stopCh:
@@ -31,8 +51,10 @@ func (s *Stream) run() {
 			// add a new rune if there is space in the stream
 			if !s.headDone && s.headPos <= curSizes.height {
 				newRune := characters[rand.Intn(len(characters))]
-				termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
-				termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+				screen.SetCell(s.display.column, s.headPos-3, tailStyle, llastRune)
+				screen.SetCell(s.display.column, s.headPos-1, midStyle, lastRune)
+				screen.SetCell(s.display.column, s.headPos, headStyle, newRune)
+				llastRune = lastRune
 				lastRune = newRune
 				s.headPos++
 			} else {
@@ -46,7 +68,7 @@ func (s *Stream) run() {
 					s.display.newStream <- true
 				}
 				if s.tailPos < curSizes.height {
-					termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack) //'\uFF60'
+					screen.SetCell(s.display.column, s.tailPos, blackStyle, ' ') //'\uFF60'
 					s.tailPos++
 				} else {
 					goto done
