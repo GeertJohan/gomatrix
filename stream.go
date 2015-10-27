@@ -26,15 +26,15 @@ func (s *Stream) run() {
 		Foreground(tcell.ColorBlack).
 		Background(tcell.ColorBlack)
 
-	headStyle := blackStyle.Foreground(tcell.ColorWhite)
+	headStyle := blackStyle.Foreground(tcell.ColorSilver)
 	tailStyle := blackStyle.Foreground(tcell.ColorGreen)
 	midStyle := blackStyle.Foreground(tcell.ColorGreen)
 
 	if screen.Colors() >= 16 {
-		midStyle = headStyle.Foreground(tcell.ColorBrightGreen)
+		midStyle = headStyle.Foreground(tcell.ColorLime)
 		// 33% of streams (arbitrary) get a bright white head
 		if rand.Intn(100) < 33 {
-			headStyle = headStyle.Foreground(tcell.ColorBrightWhite)
+			headStyle = headStyle.Foreground(tcell.ColorWhite)
 		} else {
 			headStyle = midStyle
 		}
