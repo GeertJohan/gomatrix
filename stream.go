@@ -31,8 +31,20 @@ func (s *Stream) run() {
 			// add a new rune if there is space in the stream
 			if !s.headDone && s.headPos <= curSizes.height {
 				newRune := characters[rand.Intn(len(characters))]
-				termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
-				termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+
+				// Making most of the green characters bright/bold...
+				if rand.Intn(100) < 66 {
+					termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen|termbox.AttrBold, termbox.ColorBlack)
+				} else {
+					termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
+				}
+
+				// ...and turning about a third of the heads from gray to white
+				if rand.Intn(100) < 33 {
+					termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite|termbox.AttrBold, termbox.ColorBlack)
+				} else {
+					termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+				}
 				lastRune = newRune
 				s.headPos++
 			} else {
