@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gdamore/tcell"
 	"github.com/jessevdk/go-flags"
-	"github.com/nsf/termbox-go"
 )
+
+var screen tcell.Screen
 
 // command line flags variable
 var opts struct {
@@ -144,15 +146,24 @@ func main() {
 	// seed the rand package with time
 	rand.Seed(time.Now().UnixNano())
 
-	// initialize termbox
-	err = termbox.Init()
-	if err != nil {
-		fmt.Println("Could not start termbox for gomatrix. View ~/.gomatrix-log for error messages.")
-		log.Printf("Cannot start gomatrix, termbox.Init() gave an error:\n%s\n", err)
+	// initialize tcell
+	if screen, err = tcell.NewScreen(); err != nil {
+		fmt.Println("Could not start tcell for gomatrix. View ~/.gomatrix-log for error messages.")
+		log.Printf("Cannot alloc screen, tcell.NewScreen() gave an error:\n%s", err)
 		os.Exit(1)
 	}
-	termbox.HideCursor()
-	termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
+
+	err = screen.Init()
+	if err != nil {
+		fmt.Println("Could not start tcell for gomatrix. View ~/.gomatrix-log for error messages.")
+		log.Printf("Cannot start gomatrix, screen.Init() gave an error:\n%s", err)
+		os.Exit(1)
+	}
+	screen.HideCursor()
+	screen.SetStyle(tcell.StyleDefault.
+		Background(tcell.ColorBlack).
+		Foreground(tcell.ColorBlack))
+	screen.Clear()
 
 	// StreamDisplay manager
 	go func() {
@@ -207,7 +218,7 @@ func main() {
 	}()
 
 	// set initial sizes
-	setSizes(termbox.Size())
+	setSizes(screen.Size())
 
 	// flusher flushes the termbox every x miliseconds
 	curFPS := opts.FPS
@@ -217,15 +228,15 @@ func main() {
 		for {
 			// <-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
 			time.Sleep(fpsSleepTime)
-			termbox.Flush()
+			screen.Show()
 		}
 	}()
 
 	// make chan for tembox events and run poller to send events on chan
-	eventChan := make(chan termbox.Event)
+	eventChan := make(chan tcell.Event)
 	go func() {
 		for {
-			event := termbox.PollEvent()
+			event := screen.PollEvent()
 			eventChan <- event
 		}
 	}()
@@ -235,7 +246,7 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt)
 	signal.Notify(sigChan, os.Kill)
 
-	// handle termbox events and unix signals
+	// handle tcell events and unix signals
 EVENTS:
 	for {
 		// select for either event or signal
@@ -243,53 +254,56 @@ EVENTS:
 		case event := <-eventChan:
 			log.Printf("Have event: \n%s", spew.Sdump(event))
 			// switch on event type
-			switch event.Type {
-			case termbox.EventKey: // actions depend on key
-				switch event.Key {
-				case termbox.KeyCtrlZ, termbox.KeyCtrlC:
+			switch ev := event.(type) {
+			case *tcell.EventKey:
+				switch ev.Key() {
+				case tcell.KeyCtrlZ, tcell.KeyCtrlC:
 					break EVENTS
+
+				case tcell.KeyCtrlL:
+					screen.Sync()
+
+				case tcell.KeyRune:
+					switch ev.Rune() {
+					case 'q':
+						break EVENTS
+
+					case 'c':
+						screen.Clear()
+
+					case 'k':
+						characters = halfWidthKana
+
+					case 'b': // "both"
+						characters = allTheCharacters
+
+					case '+': // speed it up
+						if curFPS < 60 {
+							curFPS++
+							fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
+						}
+
+					case '-': // slow it down
+						if curFPS > 1 {
+							curFPS--
+							fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
+						}
+
+					case '=': // set the speed back to where it started
+						curFPS = opts.FPS
+						fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
+					}
+
 					//++ TODO: add more fun keys (slowmo? freeze? rampage?)
 				}
+			case *tcell.EventResize: // set sizes
+				w, h := ev.Size()
+				setSizes(w, h)
 
-				switch event.Ch {
-				case 'q':
-					break EVENTS
-
-				case 'c':
-					termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
-
-				case 'a':
-					characters = alphaNumerics
-
-				case 'k':
-					characters = halfWidthKana
-
-				case 'b': // "both"
-					characters = allTheCharacters
-
-				case '+': // speed it up
-					if curFPS < 60 {
-						curFPS++
-						fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
-					}
-
-				case '-': // slow it down
-					if curFPS > 1 {
-						curFPS--
-						fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
-					}
-
-				case '=': // set the speed back to where it started
-					curFPS = opts.FPS
-					fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
-				}
-
-			case termbox.EventResize: // set sizes
-				setSizes(event.Width, event.Height)
-
-			case termbox.EventError: // quit
-				log.Fatalf("Quitting because of termbox error: \n%s\n", event.Err)
+			case *tcell.EventError: // quit
+				log.Fatalf("Quitting because of tcell error: %v", ev.Error())
 			}
+
 		case signal := <-sigChan:
 			log.Printf("Have signal: \n%s", spew.Sdump(signal))
 			break EVENTS
@@ -297,7 +311,8 @@ EVENTS:
 	}
 
 	// close down
-	termbox.Close()
+	screen.Fini()
+
 	log.Println("stopping gomatrix")
 	fmt.Println("Thank you for connecting with Morpheus' Matrix API v4.2. Have a nice day!")
 
