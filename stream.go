@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nsf/termbox-go"
+	"github.com/gdamore/tcell"
 )
 
 // Stream updates a StreamDisplay with new data updates
@@ -21,6 +21,15 @@ type Stream struct {
 }
 
 func (s *Stream) run() {
+	blackStyle := tcell.StyleDefault.
+		Foreground(tcell.ColorBlack).
+		Background(tcell.ColorBlack)
+
+	midStyleA := blackStyle.Foreground(tcell.ColorGreen)
+	midStyleB := blackStyle.Foreground(tcell.ColorLime)
+	headStyleA := blackStyle.Foreground(tcell.ColorSilver)
+	headStyleB := blackStyle.Foreground(tcell.ColorWhite)
+
 	var lastRune rune
 STREAM:
 	for {
@@ -35,16 +44,16 @@ STREAM:
 
 				// Making most of the green characters bright/bold...
 				if rand.Intn(100) < 66 {
-					termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen|termbox.AttrBold, termbox.ColorBlack)
+					screen.SetCell(s.display.column, s.headPos-1, midStyleA, lastRune)
 				} else {
-					termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
+					screen.SetCell(s.display.column, s.headPos-1, midStyleB, lastRune)
 				}
 
 				// ...and turning about a third of the heads from gray to white
 				if rand.Intn(100) < 33 {
-					termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite|termbox.AttrBold, termbox.ColorBlack)
+					screen.SetCell(s.display.column, s.headPos, headStyleA, newRune)
 				} else {
-					termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+					screen.SetCell(s.display.column, s.headPos, headStyleB, newRune)
 				}
 				lastRune = newRune
 				s.headPos++
@@ -59,7 +68,7 @@ STREAM:
 					s.display.newStream <- true
 				}
 				if s.tailPos < curSizes.height {
-					termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack) //'\uFF60'
+					screen.SetCell(s.display.column, s.tailPos, blackStyle, ' ') //'\uFF60'
 					s.tailPos++
 				} else {
 					break STREAM
