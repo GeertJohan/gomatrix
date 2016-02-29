@@ -226,7 +226,6 @@ func main() {
 	fmt.Printf("fps sleep time: %s\n", fpsSleepTime.String())
 	go func() {
 		for {
-			// <-time.After(40 * time.Millisecond) //++ TODO: find out wether .After() or .Sleep() is better performance-wise
 			time.Sleep(fpsSleepTime)
 			screen.Show()
 		}

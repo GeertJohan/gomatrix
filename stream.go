@@ -98,7 +98,7 @@ func (sd *StreamDisplay) run() {
 			sd.streamsLock.Lock()
 
 			// stop streams for this SD
-			for s, _ := range sd.streams {
+			for s := range sd.streams {
 				s.stopCh <- true
 			}
 
@@ -110,7 +110,6 @@ func (sd *StreamDisplay) run() {
 
 		case <-sd.newStream:
 			// have some wait before the first stream starts..
-			// <-time.After(time.Duration(rand.Intn(9000)) * time.Millisecond) //++ TODO: .After or .Sleep??
 			time.Sleep(time.Duration(rand.Intn(9000)) * time.Millisecond)
 
 			// lock map
