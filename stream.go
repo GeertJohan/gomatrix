@@ -22,17 +22,30 @@ type Stream struct {
 
 func (s *Stream) run() {
 	var lastRune rune
+STREAM:
 	for {
 		select {
 		case <-s.stopCh:
 			log.Printf("Stream on SD %d was stopped.\n", s.display.column)
-			goto done
+			break STREAM
 		case <-time.After(time.Duration(s.speed) * time.Millisecond):
 			// add a new rune if there is space in the stream
 			if !s.headDone && s.headPos <= curSizes.height {
 				newRune := characters[rand.Intn(len(characters))]
-				termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
-				termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+
+				// Making most of the green characters bright/bold...
+				if rand.Intn(100) < 66 {
+					termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen|termbox.AttrBold, termbox.ColorBlack)
+				} else {
+					termbox.SetCell(s.display.column, s.headPos-1, lastRune, termbox.ColorGreen, termbox.ColorBlack)
+				}
+
+				// ...and turning about a third of the heads from gray to white
+				if rand.Intn(100) < 33 {
+					termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite|termbox.AttrBold, termbox.ColorBlack)
+				} else {
+					termbox.SetCell(s.display.column, s.headPos, newRune, termbox.ColorWhite, termbox.ColorBlack)
+				}
 				lastRune = newRune
 				s.headPos++
 			} else {
@@ -49,12 +62,12 @@ func (s *Stream) run() {
 					termbox.SetCell(s.display.column, s.tailPos, ' ', termbox.ColorBlack, termbox.ColorBlack) //'\uFF60'
 					s.tailPos++
 				} else {
-					goto done
+					break STREAM
 				}
 			}
 		}
 	}
-done:
+
 	delete(s.display.streams, s)
 }
 
@@ -94,12 +107,12 @@ func (sd *StreamDisplay) run() {
 			// lock map
 			sd.streamsLock.Lock()
 
-			// crekate new stream instance
+			// create new stream instance
 			s := &Stream{
 				display: sd,
 				stopCh:  make(chan bool),
 				speed:   30 + rand.Intn(110),
-				length:  6 + rand.Intn(6), // length of a stream is between 6 and 12 runes
+				length:  10 + rand.Intn(8), // length of a stream is between 10 and 18 runes
 			}
 
 			// store in streams map

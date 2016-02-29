@@ -16,8 +16,11 @@ import (
 
 // command line flags variable
 var opts struct {
-	// display ascii instead of kana's
-	Ascii bool `short:"a" long:"ascii" description:"Use ascii/alphanumeric characters instead of japanese kana's."`
+	// display ascii only instead of ascii+kana's
+	Ascii bool `short:"a" long:"ascii" description:"Use ascii/alphanumeric characters only instead of a mixture with japanese kana's."`
+
+	// display kana's instead of ascii+kana's
+	Kana bool `short:"k" long:"kana" description:"Use japanese kana's only instead of a mix of ascii/alphanumeric and kana's."`
 
 	// enable logging
 	Logging bool `short:"l" long:"log" description:"Enable logging debug messages to ~/.gomatrix-log."`
@@ -40,12 +43,18 @@ var halfWidthKana = []rune{
 
 // just basic alphanumeric characters
 var alphaNumerics = []rune{
+	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+	'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
 	'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
-// characters to be used, is being set to alphaNumerics or halfWidthKana depending on flags
+// everything together, for that authentic feel
+var allTheCharacters = append(halfWidthKana, alphaNumerics...)
+
+// characters to be used, can be set to alphaNumerics or halfWidthKana depending on flags
+// defaults to allTheCharacters
 var characters []rune
 
 // streamDisplays by column number
@@ -58,8 +67,8 @@ type sizes struct {
 }
 
 var curSizes sizes                   // current sizes
-var curStreamsPerStreamDisplay = 0   // curent amount of streams per display allowed
-var sizesUpdateCh = make(chan sizes) //channel used to notify StreamDisplayManager
+var curStreamsPerStreamDisplay = 0   // current amount of streams per display allowed
+var sizesUpdateCh = make(chan sizes) // channel used to notify StreamDisplayManager
 
 // set the sizes and notify StreamDisplayManager
 func setSizes(width int, height int) {
@@ -125,9 +134,11 @@ func main() {
 	log.Println("-------------")
 	log.Println("Starting gomatrix. This logfile is for development/debug purposes.")
 
-	characters = halfWidthKana
+	characters = allTheCharacters
 	if opts.Ascii {
 		characters = alphaNumerics
+	} else if opts.Kana {
+		characters = halfWidthKana
 	}
 
 	// seed the rand package with time
@@ -199,7 +210,8 @@ func main() {
 	setSizes(termbox.Size())
 
 	// flusher flushes the termbox every x miliseconds
-	fpsSleepTime := time.Duration(1000000/opts.FPS) * time.Microsecond
+	curFPS := opts.FPS
+	fpsSleepTime := time.Duration(1000000/curFPS) * time.Microsecond
 	fmt.Printf("fps sleep time: %s\n", fpsSleepTime.String())
 	go func() {
 		for {
@@ -224,47 +236,65 @@ func main() {
 	signal.Notify(sigChan, os.Kill)
 
 	// handle termbox events and unix signals
-	func() { //++ TODO: dont use function literal. use labels instead.
-		for {
-			// select for either event or signal
-			select {
-			case event := <-eventChan:
-				log.Printf("Have event: \n%s", spew.Sdump(event))
-				// switch on event type
-				switch event.Type {
-				case termbox.EventKey: // actions depend on key
-					switch event.Key {
-					case termbox.KeyCtrlZ, termbox.KeyCtrlC:
-						return
-						//++ TODO: add more fun keys (slowmo? freeze? rampage?)
-					}
-
-					switch event.Ch {
-					case 'q':
-						return
-
-					case 'c':
-						termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
-
-					case 'a':
-						characters = alphaNumerics
-
-					case 'k':
-						characters = halfWidthKana
-					}
-
-				case termbox.EventResize: // set sizes
-					setSizes(event.Width, event.Height)
-
-				case termbox.EventError: // quit
-					log.Fatalf("Quitting because of termbox error: \n%s\n", event.Err)
+EVENTS:
+	for {
+		// select for either event or signal
+		select {
+		case event := <-eventChan:
+			log.Printf("Have event: \n%s", spew.Sdump(event))
+			// switch on event type
+			switch event.Type {
+			case termbox.EventKey: // actions depend on key
+				switch event.Key {
+				case termbox.KeyCtrlZ, termbox.KeyCtrlC:
+					break EVENTS
+					//++ TODO: add more fun keys (slowmo? freeze? rampage?)
 				}
-			case signal := <-sigChan:
-				log.Printf("Have signal: \n%s", spew.Sdump(signal))
-				return
+
+				switch event.Ch {
+				case 'q':
+					break EVENTS
+
+				case 'c':
+					termbox.Clear(termbox.ColorBlack, termbox.ColorBlack)
+
+				case 'a':
+					characters = alphaNumerics
+
+				case 'k':
+					characters = halfWidthKana
+
+				case 'b': // "both"
+					characters = allTheCharacters
+
+				case '+': // speed it up
+					if curFPS < 60 {
+						curFPS++
+						fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
+					}
+
+				case '-': // slow it down
+					if curFPS > 1 {
+						curFPS--
+						fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
+					}
+
+				case '=': // set the speed back to where it started
+					curFPS = opts.FPS
+					fpsSleepTime = time.Duration(1000000/curFPS) * time.Microsecond
+				}
+
+			case termbox.EventResize: // set sizes
+				setSizes(event.Width, event.Height)
+
+			case termbox.EventError: // quit
+				log.Fatalf("Quitting because of termbox error: \n%s\n", event.Err)
 			}
+		case signal := <-sigChan:
+			log.Printf("Have signal: \n%s", spew.Sdump(signal))
+			break EVENTS
 		}
-	}()
+	}
 
 	// close down
 	termbox.Close()
