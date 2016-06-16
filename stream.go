@@ -80,7 +80,7 @@ STREAM:
 	delete(s.display.streams, s)
 }
 
-// StreamDisplay represents a horizontal line in the terminal on which `Stream`s are displayed.
+// StreamDisplay represents a vertical line in the terminal on which `Stream`s are displayed.
 // StreamDisplay also creates the Streams themselves
 type StreamDisplay struct {
 	column      int
