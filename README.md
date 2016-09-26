@@ -1,11 +1,3 @@
-## THIS IS A FORK of github.com/GeertJohan/gomatrix
-
-> _This fork uses github.com/gdamore/tcell
-> It offers better (nicer/richer) colors and can work on terminals that don't
-> support Unicode.  For example, it works on GB18030, and EUC-JP terminals.
-> If your environment is not UTF-8 compliant, the glyphs will be replaced with
-> "?"'s by default.  Press "a" to see ASCII in that case._
-
 ## gomatrix
 gomatrix connects to The Matrix and displays it's data streams in your terminal.
 
