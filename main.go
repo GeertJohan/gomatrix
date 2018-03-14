@@ -118,7 +118,7 @@ func main() {
 		pprof.StartCPUProfile(f)
 	}
 
-	// Juse a println for fun..
+	// Use a println for fun..
 	fmt.Println("Opening connection to The Matrix.. Please stand by..")
 
 	// setup logging with logfile /dev/null or ~/.gomatrix-log
@@ -220,7 +220,7 @@ func main() {
 	// set initial sizes
 	setSizes(screen.Size())
 
-	// flusher flushes the termbox every x miliseconds
+	// flusher flushes the termbox every x milliseconds
 	curFPS := opts.FPS
 	fpsSleepTime := time.Duration(1000000/curFPS) * time.Microsecond
 	fmt.Printf("fps sleep time: %s\n", fpsSleepTime.String())
