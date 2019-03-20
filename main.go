@@ -62,25 +62,24 @@ var characters []rune
 // streamDisplays by column number
 var streamDisplaysByColumn = make(map[int]*StreamDisplay)
 
+// current sizes
+var curSizes sizes
+
+// channel used to notify StreamDisplayManager
+var sizesUpdateCh = make(chan sizes)
+
 // struct sizes contains terminal sizes (in amount of characters)
 type sizes struct {
-	width  int
-	height int
+	width                      int
+	height                     int
+	curStreamsPerStreamDisplay int // current amount of streams per display allowed
 }
 
-var curSizes sizes                   // current sizes
-var curStreamsPerStreamDisplay = 0   // current amount of streams per display allowed
-var sizesUpdateCh = make(chan sizes) // channel used to notify StreamDisplayManager
-
 // set the sizes and notify StreamDisplayManager
-func setSizes(width int, height int) {
-	s := sizes{
-		width:  width,
-		height: height,
-	}
-	curSizes = s
-	curStreamsPerStreamDisplay = 1 + height/10
-	sizesUpdateCh <- s
+func (s *sizes) setSizes(width int, height int) {
+	s.width = width
+	s.height = height
+	s.curStreamsPerStreamDisplay = 1 + height/10
 }
 
 func main() {
@@ -107,7 +106,6 @@ func main() {
 		fmt.Println("Error: option --fps not within range 1-60")
 		os.Exit(1)
 	}
-
 	// Start profiling (if required)
 	if len(opts.Profile) > 0 {
 		f, err := os.Create(opts.Profile)
@@ -115,12 +113,14 @@ func main() {
 			fmt.Printf("Error opening profiling file: %s\n", err)
 			os.Exit(1)
 		}
-		pprof.StartCPUProfile(f)
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			fmt.Printf("Error start profiling : %s\n", err)
+			os.Exit(1)
+		}
 	}
-
 	// Use a println for fun..
 	fmt.Println("Opening connection to The Matrix.. Please stand by..")
-
 	// setup logging with logfile /dev/null or ~/.gomatrix-log
 	filename := os.DevNull
 	if opts.Logging {
@@ -135,14 +135,13 @@ func main() {
 	log.SetOutput(logfile)
 	log.Println("-------------")
 	log.Println("Starting gomatrix. This logfile is for development/debug purposes.")
-
-	characters = allTheCharacters
 	if opts.Ascii {
 		characters = alphaNumerics
 	} else if opts.Kana {
 		characters = halfWidthKana
+	} else {
+		characters = allTheCharacters
 	}
-
 	// seed the rand package with time
 	rand.Seed(time.Now().UnixNano())
 
@@ -218,7 +217,8 @@ func main() {
 	}()
 
 	// set initial sizes
-	setSizes(screen.Size())
+	curSizes.setSizes(screen.Size())
+	sizesUpdateCh <- curSizes
 
 	// flusher flushes the termbox every x milliseconds
 	curFPS := opts.FPS
@@ -242,8 +242,7 @@ func main() {
 
 	// register signals to channel
 	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, os.Interrupt)
-	signal.Notify(sigChan, os.Kill)
+	signal.Notify(sigChan, os.Interrupt, os.Kill)
 
 	// handle tcell events and unix signals
 EVENTS:
@@ -297,8 +296,8 @@ EVENTS:
 				}
 			case *tcell.EventResize: // set sizes
 				w, h := ev.Size()
-				setSizes(w, h)
-
+				curSizes.setSizes(w, h)
+				sizesUpdateCh <- curSizes
 			case *tcell.EventError: // quit
 				log.Fatalf("Quitting because of tcell error: %v", ev.Error())
 			}
