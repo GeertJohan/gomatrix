@@ -64,7 +64,7 @@ var extendedChars = []rune{
 }
 
 // everything together, for that authentic feel
-var allTheCharacters = append(halfWidthKana, alphaNumerics, extendedChars...)
+var allTheCharacters = append(halfWidthKana, alphaNumerics, extendedChars)
 
 // characters to be used, can be set to alphaNumerics or halfWidthKana depending on flags
 // defaults to allTheCharacters
