@@ -132,7 +132,7 @@ func main() {
 	// setup logging with logfile /dev/null or ~/.gomatrix-log
 	filename := os.DevNull
 	if opts.Logging {
-		filename = os.Getenv("HOME") + "/.gomatrix-log"
+		filename = os.Getenv("HOME") + "/log/gomatrix-log"
 	}
 	logfile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
