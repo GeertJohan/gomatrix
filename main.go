@@ -52,8 +52,16 @@ var alphaNumerics = []rune{
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
+var extendedChars = []rune{
+'¹', '²', '³', 'ª', 'º', '%', '$', '€', '¥', '£', '¢', '&', '*', '@', '#', '|', 'á', 'â', 'à', 'ä', 'å', 'ã', 'æ', 'ç',
+'é', 'ê', 'è', 'ë', 'í', 'î', 'ì', 'ï', 'ı', 'ñ', 'ó', 'ô','ò', 'ö', 'õ', 'ø', 'œ', 'š', 'ß', 'ú', 'û', 'ù', 'ü', 'ý', 
+'ÿ', 'ž', 'Â', 'À', 'Ä', 'Å', 'Ã', 'Æ', 'Ç', 'É', 'Ê', 'È', 'Ë', 'Í', 'Î', 'Ì', 'Ï', 'Ñ', 'Ó', 'Ô', 'Ò', 'Ö', 'Õ', 'Ø',
+'Œ', 'Š','Û', 'Ù', 'Ü', 'Ý', 'Ÿ', ', ', ':', ';', '-', '–', '—', '•', '.', '…', '“', '‘', '’', '‘', ' ‚ ', '“', '”', '„', 
+'‹', '›', '«', '»', '/', '\', '?', '!', '¿', '¡', '(', ')', '[', ']', '{', '}', '©', '®', '§', '+', '×', '=', '_', '°'
+}
+
 // everything together, for that authentic feel
-var allTheCharacters = append(halfWidthKana, alphaNumerics...)
+var allTheCharacters = append(halfWidthKana, alphaNumerics, extendedChars...)
 
 // characters to be used, can be set to alphaNumerics or halfWidthKana depending on flags
 // defaults to allTheCharacters
