@@ -1,4 +1,4 @@
-module github.com/GeertJohan/gomatrix
+module github.com/LaurentFough/gomatrix
 
 go 1.13
 
