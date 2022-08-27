@@ -2,7 +2,7 @@
 gomatrix connects to The Matrix and displays it's data streams in your terminal.
 
 ### Installation
-Install from source with `go get github.com/GeertJohan/gomatrix`
+Install from source with `go install github.com/GeertJohan/gomatrix@latest`
 
 ### Usage
 Just run `gomatrix`. Use `gomatrix --help` to view all options.
