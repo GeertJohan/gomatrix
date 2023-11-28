@@ -77,7 +77,9 @@ STREAM:
 		}
 	}
 
+	s.display.streamsLock.Lock()
 	delete(s.display.streams, s)
+	s.display.streamsLock.Unlock()
 }
 
 // StreamDisplay represents a vertical line in the terminal on which `Stream`s are displayed.
